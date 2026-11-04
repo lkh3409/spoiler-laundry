@@ -1,0 +1,9 @@
+torch
+sentence-transformers
+faiss-cpu
+fastapi
+uvicorn[standard]
+faster-whisper
+httpx
+presidio-analyzer
+youtube-transcript-api

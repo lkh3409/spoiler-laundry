@@ -1,0 +1,19 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# 유튜브에서 가져온 자막과 실제 댓글은 올리지 않는다
+server/data/comment_cache.json
+server/data/transcripts/
+server/data/videos/*
+!server/data/videos/sample_video.json
+
+# 평가용 실제 댓글
+server/data/labels/
+
+# 음성 파일
+*.m4a
+*.mp3
+*.wav
+*.webm

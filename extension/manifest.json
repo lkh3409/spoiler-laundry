@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "스포 세탁소",
+  "version": "0.1.0",
+  "description": "유튜브 영화 리뷰에서 감정과 평가는 남기고 스포일러만 지웁니다.",
+  "permissions": ["storage"],
+  "host_permissions": ["http://127.0.0.1:8765/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": ["https://www.youtube.com/*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
