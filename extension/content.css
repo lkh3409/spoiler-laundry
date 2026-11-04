@@ -1,17 +1,87 @@
+/* 판단 중인 댓글: 글자를 흐리게 가리고 비눗방울을 띄운다 */
 .sl-checking {
-  filter: blur(5px);
+  position: relative;
+  display: block;
+  min-height: 24px;
+  overflow: hidden;
   user-select: none;
 }
 
+.sl-checking,
+.sl-checking * {
+  color: transparent !important;
+  text-shadow: 0 0 8px rgba(128, 128, 128, 0.9);
+}
+
+.sl-checking::before,
+.sl-checking::after {
+  content: "";
+  position: absolute;
+  bottom: -14px;
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid #5dcaa5;
+  border-radius: 50%;
+  background: rgba(93, 202, 165, 0.15);
+  animation: sl-bubble 1.6s ease-in infinite;
+}
+
+.sl-checking::before {
+  left: 18%;
+}
+
+.sl-checking::after {
+  left: 62%;
+  width: 8px;
+  height: 8px;
+  animation-delay: 0.7s;
+}
+
+@keyframes sl-bubble {
+  to {
+    transform: translateY(-48px);
+    opacity: 0;
+  }
+}
+
+/* 세탁한 댓글 */
 .sl-washed {
-  color: #0f6e56 !important;
-  font-style: italic;
+  font-style: normal !important;
+}
+
+.sl-clean {
+  color: #1d9e75 !important;
+}
+
+.sl-clean::after {
+  content: "세탁 완료";
+  display: inline-block;
+  margin-left: 8px;
+  padding: 0 6px;
+  border: 1px solid #1d9e75;
+  border-radius: 3px;
+  color: #1d9e75;
+  font-size: 11px;
+  line-height: 18px;
+  vertical-align: 1px;
+}
+
+.sl-ticket {
+  display: inline-block !important;
+  padding: 6px 10px;
+  border: 1px dashed #854f0b;
+  border-radius: 3px;
+  background: #faeeda;
+  color: #633806 !important;
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .sl-unchecked {
   opacity: 0.6;
 }
 
+/* 진행 바의 스포 구간 */
 .sl-marker {
   position: absolute;
   top: 0;
@@ -21,6 +91,7 @@
   pointer-events: none;
 }
 
+/* 세탁기 패널 */
 .sl-panel {
   position: fixed;
   right: 16px;
@@ -28,34 +99,146 @@
   z-index: 9999;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  border: 1px solid #5f5e5a;
-  border-radius: 8px;
-  background: #1f1f1f;
-  color: #fff;
+  gap: 12px;
+  padding: 10px 14px 10px 10px;
+  border: 1px solid #0f6e56;
+  border-radius: 10px;
+  background: #e1f5ee;
+  color: #04342c;
   font: 13px/1.4 "Pretendard", "Malgun Gothic", sans-serif;
 }
 
-.sl-panel button {
-  padding: 5px 10px;
-  border: 0;
+.sl-washer {
+  flex: none;
+  width: 60px;
+  height: 72px;
+  padding: 5px;
+  border: 1.5px solid #085041;
   border-radius: 6px;
+  background: #ffffff;
+}
+
+.sl-washer-top {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  height: 8px;
+  margin-bottom: 4px;
+}
+
+.sl-washer-top i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
   background: #1d9e75;
-  color: #fff;
+}
+
+.sl-door {
+  width: 46px;
+  height: 46px;
+  margin: 0 auto;
+  padding: 4px;
+  border: 2px solid #085041;
+  border-radius: 50%;
+  background: #9fe1cb;
+}
+
+.sl-drum {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #e1f5ee;
+}
+
+.sl-panel.is-washing .sl-drum {
+  animation: sl-spin 0.9s linear infinite;
+}
+
+@keyframes sl-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sl-paddle {
+  position: absolute;
+  top: 45%;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: rgba(8, 80, 65, 0.25);
+}
+
+.sl-stain {
+  position: absolute;
+  width: 8px;
+  height: 7px;
+  border-radius: 50% 40% 55% 45%;
+  background: #d85a30;
+}
+
+.sl-stain-0 { top: 4px; left: 12px; }
+.sl-stain-1 { top: 20px; left: 3px; }
+.sl-stain-2 { top: 23px; left: 20px; }
+.sl-stain-3 { top: 11px; left: 21px; width: 5px; height: 5px; }
+.sl-stain-4 { top: 9px; left: 3px; width: 5px; height: 5px; }
+.sl-stain-5 { top: 15px; left: 12px; width: 6px; height: 6px; }
+.sl-stain-6 { top: 28px; left: 11px; width: 5px; height: 4px; }
+.sl-stain-7 { top: 3px; left: 21px; width: 4px; height: 4px; }
+
+.sl-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+.sl-info strong {
+  font-size: 15px;
+}
+
+.sl-status {
+  color: #085041;
+}
+
+.sl-button {
+  margin-top: 3px;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: #0f6e56;
+  color: #ffffff;
   font: inherit;
+  font-weight: 600;
   cursor: pointer;
+}
+
+.sl-button:hover {
+  background: #085041;
+}
+
+.sl-button[hidden] {
+  display: none;
 }
 
 .sl-toast {
   position: fixed;
-  left: 50%;
-  bottom: 72px;
+  right: 16px;
+  bottom: 128px;
   z-index: 9999;
-  transform: translateX(-50%);
   padding: 10px 16px;
   border-radius: 8px;
-  background: #1f1f1f;
-  color: #fff;
+  background: #04342c;
+  color: #ffffff;
   font: 14px/1.4 "Pretendard", "Malgun Gothic", sans-serif;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sl-checking::before,
+  .sl-checking::after,
+  .sl-panel.is-washing .sl-drum {
+    animation: none;
+  }
 }
