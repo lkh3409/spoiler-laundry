@@ -35,11 +35,23 @@ cd server
 
 ## 기준값 측정
 
-정답을 표시한 `text,label` CSV로 기준값별 결과를 확인합니다.
+확장이 판단한 댓글은 `server/data/comments/`에 내용만 모입니다. 이를 정답 표시용 CSV로 나눕니다. `tune`은 모델 판단이 채워져 있고, `test`는 비어 있습니다.
 
 ```bash
-.venv/Scripts/python evaluate.py --movie <영화ID> --labels <CSV 파일>
+.venv/Scripts/python export_labels.py --movie <영화ID>
 ```
+
+`tune`으로 기준값을 고른 뒤, `test`에는 그 값 하나만 적용합니다.
+
+```bash
+.venv/Scripts/python evaluate.py --movie <영화ID> --labels data/labels/<영화ID>_tune.csv --llm
+```
+
+```bash
+.venv/Scripts/python evaluate.py --movie <영화ID> --labels data/labels/<영화ID>_test.csv --llm --threshold <기준값>
+```
+
+댓글 기준값은 측정으로 정했지만, 영상 구간 기준값(`SEGMENT_SIM_THRESHOLD`)은 정답 데이터로 측정하지 않았습니다.
 
 ## 라이선스
 

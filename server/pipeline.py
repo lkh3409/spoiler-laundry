@@ -17,13 +17,16 @@ OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
 OLLAMA_MODEL = "exaone3.5:2.4b"
 
 # 평가 데이터(evaluate.py)로 다시 정해야 하는 시작값
-SIM_THRESHOLD = 0.45
-NAME_SIM_THRESHOLD = 0.30
+SIM_THRESHOLD = 0.35
+NAME_SIM_THRESHOLD = 0.20
+# 영상은 긴 묶음이라 사실 목록과 비슷하게 나오기 쉬워 댓글과 기준을 나눈다. 정답 데이터로 측정한 값은 아니다
+SEGMENT_SIM_THRESHOLD = 0.50
 SEGMENT_GAP_SEC = 5.0
 
 TOP_FACTS = 3
 # 세탁한 문장은 판단 기준보다 엄격하게 검사해, 사건이 남아 있으면 고정 문구로 바꾼다
 WASH_MAX_SIM = 0.35
+WASH_MAX_NEW_WORDS = 0.2
 
 FALLBACK_WASH = "(스포일러가 포함된 댓글이에요. 관람 후 공개)"
 
@@ -62,6 +65,7 @@ WASH_SYSTEM = """너는 유튜브 댓글에서 영화 스포일러만 지우는 
 _embedder = None
 _embedder_lock = threading.Lock()
 _llm_lock = threading.Lock()
+_llm_memo = {}
 
 
 def get_embedder():
@@ -82,8 +86,25 @@ def split_sentences(text):
     return [p.strip() for p in parts if p.strip()]
 
 
+def invents_words(original, washed):
+    """세탁 결과의 어절이 원문에 없으면 뜻을 지어냈을 수 있다고 본다. 어미 변화를 고려해 앞 두 글자로 비교한다."""
+    words = re.findall(r"[\w]+", washed)
+    missing = [w for w in words if w[:2] not in original]
+    return bool(words) and len(missing) / len(words) > WASH_MAX_NEW_WORDS
+
+
 def ask_llm(system, user):
     """Ollama가 꺼져 있으면 None을 돌려줘 호출한 쪽이 대체 동작을 고르게 한다."""
+    key = (system, user)
+    if key in _llm_memo:
+        return _llm_memo[key]
+    answer = _call_llm(system, user)
+    if answer is not None:
+        _llm_memo[key] = answer
+    return answer
+
+
+def _call_llm(system, user):
     payload = {
         "model": OLLAMA_MODEL,
         "stream": False,
@@ -120,7 +141,8 @@ class MovieIndex:
         self.danger = [f["text"] for f in movie["facts"] if f["risk"] != "safe"]
         self.safe_index = self._build(self.safe)
         self.danger_index = self._build(self.danger)
-        patterns = [Pattern(name, re.escape(name), 1.0) for name in movie.get("characters", [])]
+        # "진 그레이"와 "진그레이"를 함께 찾도록 띄어쓰기를 선택 사항으로 둔다
+        patterns = [Pattern(name, r"\s*".join(map(re.escape, name.split())), 1.0) for name in movie.get("characters", [])]
         self.names = PatternRecognizer(supported_entity="CHARACTER", patterns=patterns) if patterns else None
 
     @staticmethod
@@ -141,20 +163,19 @@ class MovieIndex:
     def has_character(self, text):
         return bool(self.names and self.names.analyze(text, ["CHARACTER"]))
 
-    def candidate(self, sentence):
-        """1단계: 위험한 사실에 가깝고 안전한 사실보다 더 가까운 문장만 후보로 고른다."""
-        vector = embed([sentence])
-        danger_score, danger_fact = self._nearest(vector, self.danger_index, self.danger)
-        safe_score, _ = self._nearest(vector, self.safe_index, self.safe)
-        threshold = NAME_SIM_THRESHOLD if self.has_character(sentence) else SIM_THRESHOLD
-        return danger_score >= threshold and danger_score > safe_score, danger_score, danger_fact
+    def candidate(self, sentence, threshold=None):
+        """1단계: 위험한 사실에 가까운 문장을 후보로 고른다. 최종 판단은 LLM이 한다."""
+        danger_score, danger_fact = self._nearest(embed([sentence]), self.danger_index, self.danger)
+        if threshold is None:
+            threshold = NAME_SIM_THRESHOLD if self.has_character(sentence) else SIM_THRESHOLD
+        return danger_score >= threshold, danger_score, danger_fact
 
     def nearest_facts(self, sentence):
         _, ids = self.danger_index.search(embed([sentence]), min(TOP_FACTS, len(self.danger)))
         return [self.danger[int(i)] for i in ids[0]]
 
-    def judge_sentence(self, sentence, use_llm=True):
-        is_candidate, score, fact = self.candidate(sentence)
+    def judge_sentence(self, sentence, use_llm=True, threshold=None):
+        is_candidate, score, fact = self.candidate(sentence, threshold)
         if not is_candidate:
             return Verdict(False, score, None, "embedding")
         if not use_llm:
@@ -180,7 +201,7 @@ class MovieIndex:
             return FALLBACK_WASH
         washed = washed.strip()
         danger_score, _ = self._nearest(embed([washed]), self.danger_index, self.danger)
-        if self.has_character(washed) or danger_score >= WASH_MAX_SIM:
+        if self.has_character(washed) or danger_score >= WASH_MAX_SIM or invents_words(text, washed):
             return FALLBACK_WASH
         return washed
 
@@ -192,7 +213,7 @@ class MovieIndex:
         """스포로 판단한 받아쓰기 문장을 가까운 것끼리 묶어 건너뛸 구간으로 만든다."""
         segments = []
         for line in transcript:
-            verdict = self.judge_sentence(line["text"], use_llm)
+            verdict = self.judge_sentence(line["text"], use_llm, threshold=SEGMENT_SIM_THRESHOLD)
             if not verdict.spoiler:
                 continue
             if segments and line["start"] - segments[-1]["end"] <= SEGMENT_GAP_SEC:

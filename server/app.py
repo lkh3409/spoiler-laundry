@@ -18,6 +18,16 @@ class CommentRequest(BaseModel):
     text: str
 
 
+def remember_comment(movie_id, text):
+    """정답 표시용 CSV를 만들 수 있게 댓글 내용만 내 컴퓨터에 모은다. 작성자는 저장하지 않는다."""
+    path = DATA_DIR / "comments" / f"{movie_id}.txt"
+    path.parent.mkdir(exist_ok=True)
+    seen = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
+    if text not in seen:
+        with path.open("a", encoding="utf-8") as f:
+            f.write(text + "\n")
+
+
 def load_video(video_id):
     path = DATA_DIR / "videos" / f"{video_id}.json"
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
@@ -44,6 +54,7 @@ def check_comment(video_id: str, request: CommentRequest):
     text = " ".join(request.text.split())
     key = f"{data['movie_id']}:{text}"
     with _cache_lock:
+        remember_comment(data["movie_id"], text)
         if key in _cache:
             return _cache[key]
     result = get_movie(data["movie_id"]).check_comment(text)

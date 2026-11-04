@@ -11,6 +11,7 @@ server/data/videos/*
 
 # 평가용 실제 댓글
 server/data/labels/
+server/data/comments/
 
 # 음성 파일
 *.m4a
